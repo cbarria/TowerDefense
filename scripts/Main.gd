@@ -1,7 +1,7 @@
 extends Node2D
 
-const EnemyScene = preload("res://Enemy.tscn")
-const TowerScene = preload("res://Tower.tscn")
+const EnemyScene = preload("res://scenes/Enemy.tscn")
+const TowerScene = preload("res://scenes/Tower.tscn")
 
 var base_health := 20
 var max_base_health := 20
