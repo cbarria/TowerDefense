@@ -43,13 +43,12 @@ func _ready():
 	set_process(true)
 	_generate_path()
 	start_round()
-	
-	var panel = Panel.new()
-	panel.position = Vector2(820, 40)
-	panel.size = Vector2(320, 250)
-	panel.z_index = -100
+	_init_ui_panel()
 
-	# StyleBoxFlat para fondo y bordes redondeados
+func _init_ui_panel():
+	# Panel de fondo semitransparente adaptativo
+	var panel = Panel.new()
+	panel.name = "StatsPanel"
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0, 0, 0, 0.18)
 	style.corner_radius_top_left = 18
@@ -59,31 +58,88 @@ func _ready():
 	panel.add_theme_stylebox_override("panel", style)
 	add_child(panel)
 
+	# VBox para los stats
+	var vbox = VBoxContainer.new()
+	vbox.name = "StatsVBox"
+	vbox.set("custom_constants/separation", 10)
+	panel.add_child(vbox)
 
-	# Usa nombres de archivos PNG con transparencia
-	_add_icon_and_label("heart.png", "BaseLabel", Vector2(2000, 60))   # Vida base
-	_add_icon_and_label("fist.png", "RoundLabel", Vector2(2000, 120))  # Ronda actual
-	_add_icon_and_label("tower.png", "TowerLabel", Vector2(2000, 180)) # Torres colocadas
-	_add_icon_and_label("coin.png", "MoneyLabel", Vector2(2000, 240))  # Dinero
-	_add_icon_and_label("bolt.png", "DiffLabel", Vector2(2000, 300))   # Dificultad, multiplicadores
+	# Añadir cada stat con icono + label
+	_add_icon_and_label(vbox, "heart.png", "BaseLabel")   # Vida base
+	_add_icon_and_label(vbox, "fist.png", "RoundLabel")   # Ronda actual
+	_add_icon_and_label(vbox, "tower.png", "TowerLabel")  # Torres colocadas
+	_add_icon_and_label(vbox, "coin.png", "MoneyLabel")   # Dinero
+	_add_icon_and_label(vbox, "bolt.png", "DiffLabel")    # Dificultad
 
-func _add_icon_and_label(icon_file, label_name, pos: Vector2):
+	_reposition_stats_panel()
+
+func _add_icon_and_label(vbox: VBoxContainer, icon_file, label_name):
+	var hbox = HBoxContainer.new()
+	hbox.set("custom_constants/separation", 10)
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
 	var tex = load("res://assets/%s" % icon_file)
 	var img = TextureRect.new()
 	img.texture = tex
-	img.position = pos
-	img.set_size(Vector2(28, 28))   # Icono más pequeño y nítido
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	img.modulate = Color(1, 1, 1, 1)  # Por si acaso
-	add_child(img)
+	img.custom_minimum_size = Vector2(32, 32)
+	hbox.add_child(img)
 
 	var lbl = Label.new()
 	lbl.name = label_name
-	lbl.position = pos + Vector2(36, 0)  # Más pegado al icono
-	lbl.add_theme_font_size_override("font_size", 32)  # Letra más proporcionada al icono
+	lbl.text = ""
+	lbl.add_theme_font_size_override("font_size", 32)
 	lbl.add_theme_color_override("font_color", Color(0,0,0))
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	add_child(lbl)
+	hbox.add_child(lbl)
+
+	vbox.add_child(hbox)
+
+func _process(delta):
+	# Spawneo de enemigos uno a uno
+	if enemies_to_spawn > 0:
+		spawn_timer += delta
+		if spawn_timer >= SPAWN_INTERVAL:
+			spawn_timer = 0.0
+			spawn_enemy()
+	elif enemies_alive <= 0 and not waiting_next_round:
+		waiting_next_round = true
+		await_next_round()
+	queue_redraw()
+
+	# ACTUALIZA LOS LABELS DE UI ICON (Ahora usan el nuevo sistema)
+	if has_node("StatsPanel/BaseLabel"):
+		$StatsPanel/BaseLabel.text = "Base: %d" % base_health
+	if has_node("StatsPanel/RoundLabel"):
+		$StatsPanel/RoundLabel.text = "Round: %d" % round_num
+	if has_node("StatsPanel/TowerLabel"):
+		$StatsPanel/TowerLabel.text = "Towers: %d / %d" % [towers.size(), max_towers]
+	if has_node("StatsPanel/MoneyLabel"):
+		$StatsPanel/MoneyLabel.text = "Money: $%d" % money
+	if has_node("StatsPanel/DiffLabel"):
+		$StatsPanel/DiffLabel.text = "HP: x%.2f  SPD: x%.2f" % [enemy_health_mult, enemy_speed_mult]
+
+	# Enemigos
+	enemies.clear()
+	for child in get_children():
+		if child is Node2D and child.has_method("update_enemy") and child.path.size() > 0:
+			child.update_enemy(delta)
+			enemies.append(child)
+	# Torres
+	for t in towers:
+		t.update_tower(delta, enemies)
+
+	# Si cambia el tamaño de pantalla, reposiciona el panel
+	_reposition_stats_panel()
+
+func _reposition_stats_panel():
+	if not has_node("StatsPanel"):
+		return
+	var panel = $StatsPanel
+	var vbox = panel.get_node("StatsVBox")
+	panel.size = Vector2(300, vbox.get_combined_minimum_size().y + 20)
+	var viewport_size = get_viewport_rect().size
+	panel.position = Vector2(viewport_size.x - panel.size.x - 32, 32)
 
 func _input(event):
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -139,40 +195,6 @@ func start_round():
 	spawn_timer = 0.0
 	if round_num % 10 == 0:
 		enemies_to_spawn += 1
-
-func _process(delta):
-	# Spawneo de enemigos uno a uno
-	if enemies_to_spawn > 0:
-		spawn_timer += delta
-		if spawn_timer >= SPAWN_INTERVAL:
-			spawn_timer = 0.0
-			spawn_enemy()
-	elif enemies_alive <= 0 and not waiting_next_round:
-		waiting_next_round = true
-		await_next_round()
-	queue_redraw()
-
-	# ACTUALIZA LOS LABELS DE UI ICON
-	if has_node("BaseLabel"):
-		$BaseLabel.text = "Base: %d" % base_health
-	if has_node("RoundLabel"):
-		$RoundLabel.text = "Round: %d" % round_num
-	if has_node("TowerLabel"):
-		$TowerLabel.text = "Towers: %d / %d" % [towers.size(), max_towers]
-	if has_node("MoneyLabel"):
-		$MoneyLabel.text = "Money: $%d" % money
-	if has_node("DiffLabel"):
-		$DiffLabel.text = "HP: x%.2f  SPD: x%.2f" % [enemy_health_mult, enemy_speed_mult]
-
-	# Enemigos
-	enemies.clear()
-	for child in get_children():
-		if child is Node2D and child.has_method("update_enemy") and child.path.size() > 0:
-			child.update_enemy(delta)
-			enemies.append(child)
-	# Torres
-	for t in towers:
-		t.update_tower(delta, enemies)
 
 func await_next_round():
 	await get_tree().create_timer(1.5).timeout
