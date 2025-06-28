@@ -38,12 +38,16 @@ var EnemyTypes = [
 	{"shape": EnemyShape.DIAMOND,  "color": Color(1, 0.2, 0.3),   "speed": 50.0, "health": 6, "size": 39, "reward": 15}
 ]
 
+# Referencias para stats UI
+var label_refs = {}
+
 func _ready():
 	randomize()
 	set_process(true)
 	_generate_path()
 	start_round()
 	_init_ui_panel()
+	call_deferred("_reposition_stats_panel")
 
 func _init_ui_panel():
 	# Panel de fondo semitransparente adaptativo
@@ -64,16 +68,16 @@ func _init_ui_panel():
 	vbox.set("custom_constants/separation", 10)
 	panel.add_child(vbox)
 
-	# Añadir cada stat con icono + label
-	_add_icon_and_label(vbox, "heart.png", "BaseLabel")   # Vida base
-	_add_icon_and_label(vbox, "fist.png", "RoundLabel")   # Ronda actual
-	_add_icon_and_label(vbox, "tower.png", "TowerLabel")  # Torres colocadas
-	_add_icon_and_label(vbox, "coin.png", "MoneyLabel")   # Dinero
-	_add_icon_and_label(vbox, "bolt.png", "DiffLabel")    # Dificultad
+	# Añadir cada stat con icono + label y guardar referencia a cada Label
+	label_refs["BaseLabel"]  = _add_icon_and_label(vbox, "heart.png", "Base: 20")
+	label_refs["RoundLabel"] = _add_icon_and_label(vbox, "fist.png", "Round: 1")
+	label_refs["TowerLabel"] = _add_icon_and_label(vbox, "tower.png", "Towers: 0 / 6")
+	label_refs["MoneyLabel"] = _add_icon_and_label(vbox, "coin.png", "Money: $100")
+	label_refs["DiffLabel"]  = _add_icon_and_label(vbox, "bolt.png", "HP: x1.00 SPD: x1.00")
 
 	_reposition_stats_panel()
 
-func _add_icon_and_label(vbox: VBoxContainer, icon_file, label_name):
+func _add_icon_and_label(vbox: VBoxContainer, icon_file, initial_text):
 	var hbox = HBoxContainer.new()
 	hbox.set("custom_constants/separation", 10)
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -86,14 +90,15 @@ func _add_icon_and_label(vbox: VBoxContainer, icon_file, label_name):
 	hbox.add_child(img)
 
 	var lbl = Label.new()
-	lbl.name = label_name
-	lbl.text = ""
+	lbl.text = initial_text
 	lbl.add_theme_font_size_override("font_size", 32)
-	lbl.add_theme_color_override("font_color", Color(0,0,0))
+	lbl.add_theme_color_override("font_color", Color(1,1,1))  # <-- BLANCO
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL    # <-- QUE SE EXPANDA
 	hbox.add_child(lbl)
 
 	vbox.add_child(hbox)
+	return lbl  # Devuelve la referencia al Label
 
 func _process(delta):
 	# Spawneo de enemigos uno a uno
@@ -107,17 +112,17 @@ func _process(delta):
 		await_next_round()
 	queue_redraw()
 
-	# ACTUALIZA LOS LABELS DE UI ICON (Ahora usan el nuevo sistema)
-	if has_node("StatsPanel/BaseLabel"):
-		$StatsPanel/BaseLabel.text = "Base: %d" % base_health
-	if has_node("StatsPanel/RoundLabel"):
-		$StatsPanel/RoundLabel.text = "Round: %d" % round_num
-	if has_node("StatsPanel/TowerLabel"):
-		$StatsPanel/TowerLabel.text = "Towers: %d / %d" % [towers.size(), max_towers]
-	if has_node("StatsPanel/MoneyLabel"):
-		$StatsPanel/MoneyLabel.text = "Money: $%d" % money
-	if has_node("StatsPanel/DiffLabel"):
-		$StatsPanel/DiffLabel.text = "HP: x%.2f  SPD: x%.2f" % [enemy_health_mult, enemy_speed_mult]
+	# ACTUALIZA LOS LABELS DE UI ICON usando referencias
+	if label_refs.has("BaseLabel"):
+		label_refs["BaseLabel"].text = "Base: %d" % base_health
+	if label_refs.has("RoundLabel"):
+		label_refs["RoundLabel"].text = "Round: %d" % round_num
+	if label_refs.has("TowerLabel"):
+		label_refs["TowerLabel"].text = "Towers: %d / %d" % [towers.size(), max_towers]
+	if label_refs.has("MoneyLabel"):
+		label_refs["MoneyLabel"].text = "Money: $%d" % money
+	if label_refs.has("DiffLabel"):
+		label_refs["DiffLabel"].text = "HP: x%.2f  SPD: x%.2f" % [enemy_health_mult, enemy_speed_mult]
 
 	# Enemigos
 	enemies.clear()
@@ -130,14 +135,14 @@ func _process(delta):
 		t.update_tower(delta, enemies)
 
 	# Si cambia el tamaño de pantalla, reposiciona el panel
-	_reposition_stats_panel()
+	call_deferred("_reposition_stats_panel")
 
 func _reposition_stats_panel():
 	if not has_node("StatsPanel"):
 		return
 	var panel = $StatsPanel
 	var vbox = panel.get_node("StatsVBox")
-	panel.size = Vector2(300, vbox.get_combined_minimum_size().y + 20)
+	panel.size = Vector2(350, vbox.get_combined_minimum_size().y + 20)
 	var viewport_size = get_viewport_rect().size
 	panel.position = Vector2(viewport_size.x - panel.size.x - 32, 32)
 
