@@ -34,8 +34,8 @@ enum EnemyShape { CIRCLE, SQUARE, TRIANGLE, DIAMOND }
 var EnemyTypes = [
 	{"shape": EnemyShape.CIRCLE,   "color": Color(1, 0.2, 0.2),   "speed": 80.0, "health": 3, "size": 24, "reward": 7},
 	{"shape": EnemyShape.SQUARE,   "color": Color(0.9, 0.1, 0.1), "speed": 65.0, "health": 4, "size": 33, "reward": 11},
-	{"shape": EnemyShape.TRIANGLE, "color": Color(0.8, 0.05, 0.05), "speed": 95.0, "health": 2, "size": 39, "reward": 4},
-	{"shape": EnemyShape.DIAMOND,  "color": Color(1, 0.3, 0.3),   "speed": 50.0, "health": 5, "size": 27, "reward": 15}
+	{"shape": EnemyShape.TRIANGLE, "color": Color(0.8, 0.05, 0.05), "speed": 95.0, "health": 2, "size": 31, "reward": 4},
+	{"shape": EnemyShape.DIAMOND,  "color": Color(1, 0.2, 0.3),   "speed": 50.0, "health": 6, "size": 39, "reward": 15}
 ]
 
 func _ready():
