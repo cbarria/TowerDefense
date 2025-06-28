@@ -40,6 +40,7 @@ var EnemyTypes = [
 
 # Referencias para stats UI
 var label_refs = {}
+var ui_layer: CanvasLayer
 
 func _ready():
 	randomize()
@@ -47,10 +48,12 @@ func _ready():
 	_generate_path()
 	start_round()
 	_init_ui_panel()
-	call_deferred("_reposition_stats_panel")
 
 func _init_ui_panel():
-	# Panel de fondo semitransparente adaptativo
+	ui_layer = CanvasLayer.new()
+	add_child(ui_layer)
+
+	# Panel de stats
 	var panel = Panel.new()
 	panel.name = "StatsPanel"
 	var style = StyleBoxFlat.new()
@@ -60,22 +63,41 @@ func _init_ui_panel():
 	style.corner_radius_bottom_left = 18
 	style.corner_radius_bottom_right = 18
 	panel.add_theme_stylebox_override("panel", style)
-	add_child(panel)
 
-	# VBox para los stats
+	# Anchors y offsets: esquina superior derecha SIEMPRE
+	panel.anchor_left = 1.0
+	panel.anchor_top = 0.0
+	panel.anchor_right = 1.0
+	panel.anchor_bottom = 0.0
+	panel.offset_left = -370   # ancho del panel, negativo
+	panel.offset_top = 32      # margen arriba
+	panel.offset_right = 0     # margen derecho
+	panel.offset_bottom = 0
+	panel.size = Vector2(350, 260)
+	panel.position = Vector2.ZERO
+
+	ui_layer.add_child(panel)
+
+	# VBox para stats, ocupa todo el panel con márgenes
 	var vbox = VBoxContainer.new()
 	vbox.name = "StatsVBox"
 	vbox.set("custom_constants/separation", 10)
+	vbox.anchor_left = 0.0
+	vbox.anchor_top = 0.0
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
+	vbox.offset_left = 20
+	vbox.offset_top = 20
+	vbox.offset_right = -20
+	vbox.offset_bottom = -20
 	panel.add_child(vbox)
 
-	# Añadir cada stat con icono + label y guardar referencia a cada Label
+	# Añade cada stat con icono + label y guarda referencia
 	label_refs["BaseLabel"]  = _add_icon_and_label(vbox, "heart.png", "Base: 20")
 	label_refs["RoundLabel"] = _add_icon_and_label(vbox, "fist.png", "Round: 1")
 	label_refs["TowerLabel"] = _add_icon_and_label(vbox, "tower.png", "Towers: 0 / 6")
 	label_refs["MoneyLabel"] = _add_icon_and_label(vbox, "coin.png", "Money: $100")
 	label_refs["DiffLabel"]  = _add_icon_and_label(vbox, "bolt.png", "HP: x1.00 SPD: x1.00")
-
-	_reposition_stats_panel()
 
 func _add_icon_and_label(vbox: VBoxContainer, icon_file, initial_text):
 	var hbox = HBoxContainer.new()
@@ -92,13 +114,13 @@ func _add_icon_and_label(vbox: VBoxContainer, icon_file, initial_text):
 	var lbl = Label.new()
 	lbl.text = initial_text
 	lbl.add_theme_font_size_override("font_size", 32)
-	lbl.add_theme_color_override("font_color", Color(1,1,1))  # <-- BLANCO
+	lbl.add_theme_color_override("font_color", Color(1,1,1))  # Blanco
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL    # <-- QUE SE EXPANDA
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(lbl)
 
 	vbox.add_child(hbox)
-	return lbl  # Devuelve la referencia al Label
+	return lbl
 
 func _process(delta):
 	# Spawneo de enemigos uno a uno
@@ -133,18 +155,6 @@ func _process(delta):
 	# Torres
 	for t in towers:
 		t.update_tower(delta, enemies)
-
-	# Si cambia el tamaño de pantalla, reposiciona el panel
-	call_deferred("_reposition_stats_panel")
-
-func _reposition_stats_panel():
-	if not has_node("StatsPanel"):
-		return
-	var panel = $StatsPanel
-	var vbox = panel.get_node("StatsVBox")
-	panel.size = Vector2(350, vbox.get_combined_minimum_size().y + 20)
-	var viewport_size = get_viewport_rect().size
-	panel.position = Vector2(viewport_size.x - panel.size.x - 32, 32)
 
 func _input(event):
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
