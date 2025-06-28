@@ -38,7 +38,6 @@ var EnemyTypes = [
 	{"shape": EnemyShape.DIAMOND,  "color": Color(1, 0.2, 0.3),   "speed": 50.0, "health": 6, "size": 39, "reward": 15}
 ]
 
-# Referencias para stats UI
 var label_refs = {}
 var ui_layer: CanvasLayer
 
@@ -53,32 +52,29 @@ func _init_ui_panel():
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
 
-	# Panel de stats
 	var panel = Panel.new()
 	panel.name = "StatsPanel"
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.18)
+	style.bg_color = Color(0, 0, 0, 0.25)
 	style.corner_radius_top_left = 18
 	style.corner_radius_top_right = 18
 	style.corner_radius_bottom_left = 18
 	style.corner_radius_bottom_right = 18
 	panel.add_theme_stylebox_override("panel", style)
 
-	# Anchors y offsets: esquina superior derecha SIEMPRE
 	panel.anchor_left = 1.0
 	panel.anchor_top = 0.0
 	panel.anchor_right = 1.0
 	panel.anchor_bottom = 0.0
-	panel.offset_left = -370   # ancho del panel, negativo
-	panel.offset_top = 32      # margen arriba
-	panel.offset_right = 0     # margen derecho
+	panel.offset_left = -370
+	panel.offset_top = 32
+	panel.offset_right = 0
 	panel.offset_bottom = 0
 	panel.size = Vector2(350, 260)
 	panel.position = Vector2.ZERO
 
 	ui_layer.add_child(panel)
 
-	# VBox para stats, ocupa todo el panel con márgenes
 	var vbox = VBoxContainer.new()
 	vbox.name = "StatsVBox"
 	vbox.set("custom_constants/separation", 10)
@@ -92,7 +88,6 @@ func _init_ui_panel():
 	vbox.offset_bottom = -20
 	panel.add_child(vbox)
 
-	# Añade cada stat con icono + label y guarda referencia
 	label_refs["BaseLabel"]  = _add_icon_and_label(vbox, "heart.png", "Base: 20")
 	label_refs["RoundLabel"] = _add_icon_and_label(vbox, "fist.png", "Round: 1")
 	label_refs["TowerLabel"] = _add_icon_and_label(vbox, "tower.png", "Towers: 0 / 6")
@@ -104,26 +99,27 @@ func _add_icon_and_label(vbox: VBoxContainer, icon_file, initial_text):
 	hbox.set("custom_constants/separation", 10)
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	var tex = load("res://assets/%s" % icon_file)
 	var img = TextureRect.new()
-	img.texture = tex
+	# Si el icono existe, lo carga. Si no, igual sigue.
+	if ResourceLoader.exists("res://assets/%s" % icon_file):
+		var tex = load("res://assets/%s" % icon_file)
+		img.texture = tex
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	img.custom_minimum_size = Vector2(32, 32)
 	hbox.add_child(img)
 
 	var lbl = Label.new()
 	lbl.text = initial_text
-	lbl.add_theme_font_size_override("font_size", 32)
-	lbl.add_theme_color_override("font_color", Color(1,1,1))  # Blanco
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(lbl)
+	lbl.add_theme_font_size_override("font_size", 34)
+	lbl.add_theme_color_override("font_color", Color.WHITE)
 
+	hbox.add_child(lbl)
 	vbox.add_child(hbox)
 	return lbl
 
 func _process(delta):
-	# Spawneo de enemigos uno a uno
 	if enemies_to_spawn > 0:
 		spawn_timer += delta
 		if spawn_timer >= SPAWN_INTERVAL:
@@ -134,7 +130,6 @@ func _process(delta):
 		await_next_round()
 	queue_redraw()
 
-	# ACTUALIZA LOS LABELS DE UI ICON usando referencias
 	if label_refs.has("BaseLabel"):
 		label_refs["BaseLabel"].text = "Base: %d" % base_health
 	if label_refs.has("RoundLabel"):
@@ -146,13 +141,11 @@ func _process(delta):
 	if label_refs.has("DiffLabel"):
 		label_refs["DiffLabel"].text = "HP: x%.2f  SPD: x%.2f" % [enemy_health_mult, enemy_speed_mult]
 
-	# Enemigos
 	enemies.clear()
 	for child in get_children():
 		if child is Node2D and child.has_method("update_enemy") and child.path.size() > 0:
 			child.update_enemy(delta)
 			enemies.append(child)
-	# Torres
 	for t in towers:
 		t.update_tower(delta, enemies)
 
